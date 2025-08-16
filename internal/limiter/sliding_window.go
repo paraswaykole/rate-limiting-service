@@ -12,9 +12,9 @@ type SlidingWindowLimiter struct {
 	// To implement
 }
 
-func (b *SlidingWindowLimiter) Check() bool {
+func (b *SlidingWindowLimiter) Check() (bool, map[string]string) {
 	// To implement
-	return false
+	return false, nil
 }
 
 func (s *SlidingWindowLimiter) Configure(configuration json.RawMessage) error {

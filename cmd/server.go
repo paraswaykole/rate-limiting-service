@@ -42,7 +42,7 @@ func startServer() {
 			utils.SendValidationErrors(err, c)
 			return err
 		}
-		allowed, err := services.Check(checkDto)
+		allowed, headers, err := services.Check(checkDto)
 		if err != nil {
 			if validationErrors, ok := err.(validator.ValidationErrors); ok {
 				utils.SendValidationErrors(validationErrors, c)
@@ -54,6 +54,9 @@ func startServer() {
 				return c.Status(http.StatusNotFound).SendString("rate limiter not found")
 			}
 			return c.Status(http.StatusInternalServerError).SendString("Internal server error")
+		}
+		for key, value := range headers {
+			c.Response().Header.Add(key, value)
 		}
 		if allowed {
 			c.Status(http.StatusOK)

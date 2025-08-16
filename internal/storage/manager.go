@@ -40,6 +40,17 @@ func (sm *StorageManager) GetLimiterData(key string, out any) error {
 	return utils.MapToStruct(data, out)
 }
 
+func (sm *StorageManager) GetLimiterField(key string, field string) (string, error) {
+	data, err := sm.redisStorage.client.HGet(context.Background(), key, field).Result()
+	if err != nil && err.Error() == "redis: nil" {
+		return "", errors.New(ErrDataNotFound)
+	}
+	if err != nil {
+		return "", err
+	}
+	return data, nil
+}
+
 func (sm *StorageManager) SetLimiterData(key string, data any, ttlInSeconds int) {
 	ttl := time.Second * time.Duration(ttlInSeconds)
 	values := utils.StructToMap(data)

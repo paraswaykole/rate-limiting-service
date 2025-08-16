@@ -10,10 +10,11 @@ type CheckDTO struct {
 	Args []string `query:"args"`
 }
 
-func Check(checkDTO *CheckDTO) (bool, error) {
+func Check(checkDTO *CheckDTO) (bool, map[string]string, error) {
 	rateLimiter := limiter.GetManager().AccessLimiter(checkDTO.Key, checkDTO.Args)
 	if rateLimiter == nil {
-		return false, errors.New("rate limiter not found")
+		return false, nil, errors.New("rate limiter not found")
 	}
-	return (*rateLimiter).Check(), nil
+	allowed, headers := (*rateLimiter).Check()
+	return allowed, headers, nil
 }

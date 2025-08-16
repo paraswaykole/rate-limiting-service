@@ -2,6 +2,7 @@ package limiter
 
 import (
 	"encoding/json"
+	"fmt"
 	"math"
 	"rate-limiting-service/internal/config"
 	"rate-limiting-service/internal/storage"
@@ -45,19 +46,28 @@ func (b *TokenBucketLimiter) Configure(configuration json.RawMessage) error {
 	return nil
 }
 
-func (b *TokenBucketLimiter) Check() bool {
+func (b *TokenBucketLimiter) Check() (bool, map[string]string) {
 	b.lock.Lock()
 	defer b.lock.Unlock()
 	now := time.Now()
 	elapsed := now.Sub(b.LastRefill).Seconds()
 	b.Tokens = math.Min(b.Capacity, b.Tokens+elapsed*b.RefillRate)
 	b.LastRefill = now
+	resetSeconds := math.Ceil((b.Capacity - b.Tokens) / b.RefillRate)
 	if b.Tokens >= 1 {
 		b.Tokens -= 1
 		go b.publishUpdate()
-		return true
+		return true, map[string]string{
+			"X-RateLimit-Limit":     fmt.Sprintf("%.0f", b.Capacity),
+			"X-RateLimit-Remaining": fmt.Sprintf("%.0f", b.Tokens),
+			"X-RateLimit-Reset":     fmt.Sprintf("%.0f", resetSeconds),
+		}
 	}
-	return false
+	return false, map[string]string{
+		"X-RateLimit-Limit":     fmt.Sprintf("%.0f", b.Capacity),
+		"X-RateLimit-Remaining": fmt.Sprintf("%.0f", b.Tokens),
+		"X-RateLimit-Reset":     fmt.Sprintf("%.0f", resetSeconds),
+	}
 }
 
 func (b *TokenBucketLimiter) prepareLimiter() {
@@ -77,6 +87,13 @@ func (b *TokenBucketLimiter) prepareLimiter() {
 
 func (b *TokenBucketLimiter) sync() {
 	limiterKey := GetLimiterKey(TOKEN_BUCKET, b.key, b.args)
+	previousLastRefill, _ := storage.GetManager().GetLimiterField(limiterKey, "lastRefill")
+	if previousLastRefill != "" {
+		previousLastRefillTime, _ := time.Parse(time.RFC3339Nano, previousLastRefill)
+		if previousLastRefillTime.UnixNano() >= b.LastRefill.UnixNano() {
+			return
+		}
+	}
 	ttlSeconds := int(math.Ceil(b.Capacity/b.RefillRate)) + 2
 	storage.GetManager().SetLimiterData(limiterKey, b, ttlSeconds)
 }

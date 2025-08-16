@@ -67,6 +67,14 @@ func MapToStruct(m map[string]string, out any) error {
 		if val, ok := m[tag]; ok {
 			// Set only if field can be set
 			if v.Field(i).CanSet() {
+				// Handle time.Time specifically
+				if v.Field(i).Type() == reflect.TypeOf(time.Time{}) {
+					// Try parsing using RFC3339
+					if parsedTime, err := time.Parse(time.RFC3339, val); err == nil {
+						v.Field(i).Set(reflect.ValueOf(parsedTime))
+					}
+					continue
+				}
 				// Handle basic types
 				switch v.Field(i).Kind() {
 				case reflect.String:

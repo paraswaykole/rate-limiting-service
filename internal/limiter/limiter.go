@@ -17,7 +17,7 @@ const (
 )
 
 type Limiter interface {
-	Check() bool
+	Check() (bool, map[string]string)
 	Configure(json.RawMessage) error
 	prepareLimiter()
 	sync()

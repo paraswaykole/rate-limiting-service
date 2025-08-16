@@ -7,6 +7,8 @@ import (
 	"rate-limiting-service/internal/utils"
 	"strconv"
 	"time"
+
+	"github.com/redis/go-redis/v9"
 )
 
 type StorageManager struct {
@@ -24,29 +26,37 @@ func GetManager() *StorageManager {
 	return storageManager
 }
 
-func (sm *StorageManager) GetLimiterData(key string) (string, error) {
-	data, err := sm.redisStorage.Get(context.Background(), key)
+func (sm *StorageManager) GetLimiterData(key string, out any) error {
+	data, err := sm.redisStorage.client.HGetAll(context.Background(), key).Result()
 	if err != nil && err.Error() == "redis: nil" {
-		return "", errors.New(ErrDataNotFound)
+		return errors.New(ErrDataNotFound)
+	}
+	if len(data) == 0 {
+		return errors.New(ErrDataNotFound)
 	}
 	if err != nil {
-		return "", err
+		return err
 	}
-	return data, nil
+	return utils.MapToStruct(data, out)
 }
 
 func (sm *StorageManager) SetLimiterData(key string, data any, ttlInSeconds int) {
 	ttl := time.Second * time.Duration(ttlInSeconds)
-	err := sm.redisStorage.Set(context.Background(), key, data, ttl)
+	values := utils.StructToMap(data)
+	err := sm.redisStorage.client.HSet(context.Background(), key, values).Err()
 	if err != nil {
 		panic(err)
 	}
+	sm.redisStorage.client.Expire(context.Background(), key, ttl)
 }
 
 func (sm *StorageManager) GetConfigureData(key string, out any) error {
 	storageKey := fmt.Sprintf("configure:%s", key)
 	data, err := sm.redisStorage.client.HGetAll(context.Background(), storageKey).Result()
 	if err != nil && err.Error() == "redis: nil" {
+		return errors.New(ErrDataNotFound)
+	}
+	if len(data) == 0 {
 		return errors.New(ErrDataNotFound)
 	}
 	if err != nil {
@@ -75,4 +85,12 @@ func (sm *StorageManager) SetConfigureData(key string, limiterType int, data any
 	if err != nil {
 		panic(err)
 	}
+}
+
+func (sm *StorageManager) PublishUpdates(channel string, data any) {
+	sm.redisStorage.client.Publish(context.Background(), channel, data)
+}
+
+func (sm *StorageManager) SubscribeUpdates(channel string) *redis.PubSub {
+	return sm.redisStorage.client.Subscribe(context.Background(), channel)
 }

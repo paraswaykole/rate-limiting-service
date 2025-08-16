@@ -19,8 +19,12 @@ const (
 type Limiter interface {
 	Check() bool
 	Configure(json.RawMessage) error
-	PrepareLimiter()
-	Sync()
+	prepareLimiter()
+	sync()
+	publishUpdate()
+	subscribeUpdates()
+	isExpired() bool
+	clear()
 }
 
 func NewLimiter(key string, args []string, limiterType LimiterType) Limiter {
@@ -65,6 +69,20 @@ func GetLimiterKey(limType LimiterType, key string, args []string) string {
 		limiterKey = fmt.Sprintf("limiter:tbl:%s", key)
 	case SLIDING_WINDOW:
 		limiterKey = fmt.Sprintf("limiter:sw:%s", key)
+	}
+	if len(args) > 0 {
+		limiterKey = fmt.Sprintf("%s:%s", limiterKey, strings.Join(args, ":"))
+	}
+	return limiterKey
+}
+
+func GetUpdatesKey(limType LimiterType, key string, args []string) string {
+	var limiterKey string
+	switch limType {
+	case TOKEN_BUCKET:
+		limiterKey = fmt.Sprintf("updates:tbl:%s", key)
+	case SLIDING_WINDOW:
+		limiterKey = fmt.Sprintf("updates:sw:%s", key)
 	}
 	if len(args) > 0 {
 		limiterKey = fmt.Sprintf("%s:%s", limiterKey, strings.Join(args, ":"))

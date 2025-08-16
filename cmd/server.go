@@ -4,13 +4,25 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"os"
+	"os/signal"
 	"rate-limiting-service/internal/config"
+	"rate-limiting-service/internal/limiter"
 	"rate-limiting-service/internal/services"
 	"rate-limiting-service/internal/storage"
+	"rate-limiting-service/internal/utils"
+	"syscall"
+	"time"
 
 	"github.com/go-playground/validator/v10"
 	"github.com/gofiber/fiber/v3"
 )
+
+func main() {
+	storage.GetManager()
+	startSyncJob()
+	startServer()
+}
 
 type structValidator struct {
 	validate *validator.Validate
@@ -20,21 +32,20 @@ func (v *structValidator) Validate(out any) error {
 	return v.validate.Struct(out)
 }
 
-func main() {
-	storage.GetManager()
+func startServer() {
 	app := fiber.New(fiber.Config{
 		StructValidator: &structValidator{validate: validator.New()},
 	})
 	app.Get("/check", func(c fiber.Ctx) error {
 		checkDto := new(services.CheckDTO)
 		if err := c.Bind().Query(checkDto); err != nil {
-			sendValidationErrors(err, c)
+			utils.SendValidationErrors(err, c)
 			return err
 		}
 		allowed, err := services.Check(checkDto)
 		if err != nil {
 			if validationErrors, ok := err.(validator.ValidationErrors); ok {
-				sendValidationErrors(validationErrors, c)
+				utils.SendValidationErrors(validationErrors, c)
 				return nil
 			}
 		}
@@ -54,13 +65,13 @@ func main() {
 	app.Post("/configure", func(c fiber.Ctx) error {
 		configDto := new(services.ConfigureDTO)
 		if err := c.Bind().Body(configDto); err != nil {
-			sendValidationErrors(err, c)
+			utils.SendValidationErrors(err, c)
 			return err
 		}
 		err := services.Configure(configDto)
 		if err != nil {
 			if validationErrors, ok := err.(validator.ValidationErrors); ok {
-				sendValidationErrors(validationErrors, c)
+				utils.SendValidationErrors(validationErrors, c)
 				return nil
 			}
 		}
@@ -73,16 +84,29 @@ func main() {
 	app.Get("/metrics", func(c fiber.Ctx) error {
 		return nil
 	})
-	log.Fatal(app.Listen(":" + config.PORT))
+
+	// Graceful shutdown
+	quit := make(chan os.Signal, 1)
+	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
+
+	go func() {
+		if err := app.Listen(":" + config.PORT); err != nil {
+			log.Fatal("Fiber stopped:", err)
+		}
+	}()
+
+	<-quit
+	fmt.Println("Shutting down...")
+	limiter.GetManager().StopAll()
+	app.Shutdown()
+	fmt.Println("Shutdown complete.")
 }
 
-func sendValidationErrors(err error, c fiber.Ctx) {
-	if validationErrors, ok := err.(validator.ValidationErrors); ok {
-		for _, e := range validationErrors {
-			c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
-				"field": e.Field(),
-				"error": e.Error(),
-			})
+func startSyncJob() {
+	go func() {
+		ticker := time.NewTicker(10 * time.Millisecond)
+		for range ticker.C {
+			limiter.GetManager().SyncLimiters()
 		}
-	}
+	}()
 }

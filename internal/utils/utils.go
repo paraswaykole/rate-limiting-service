@@ -2,8 +2,13 @@ package utils
 
 import (
 	"errors"
+	"math/rand"
 	"reflect"
 	"strconv"
+	"time"
+
+	"github.com/go-playground/validator/v10"
+	"github.com/gofiber/fiber/v3"
 )
 
 func StructToMap(data any) map[string]any {
@@ -82,4 +87,25 @@ func MapToStruct(m map[string]string, out any) error {
 	}
 
 	return nil
+}
+
+func SendValidationErrors(err error, c fiber.Ctx) {
+	if validationErrors, ok := err.(validator.ValidationErrors); ok {
+		for _, e := range validationErrors {
+			c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
+				"field": e.Field(),
+				"error": e.Error(),
+			})
+		}
+	}
+}
+
+func RandomString(length int) string {
+	const charset = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
+	rand.Seed(time.Now().UnixNano()) // Seed RNG
+	b := make([]byte, length)
+	for i := range b {
+		b[i] = charset[rand.Intn(len(charset))]
+	}
+	return string(b)
 }

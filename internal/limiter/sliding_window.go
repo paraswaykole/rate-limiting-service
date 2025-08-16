@@ -22,10 +22,27 @@ func (s *SlidingWindowLimiter) Configure(configuration json.RawMessage) error {
 	return nil
 }
 
-func (s *SlidingWindowLimiter) PrepareLimiter() {
+func (s *SlidingWindowLimiter) prepareLimiter() {
 	// To implement
 }
 
-func (s *SlidingWindowLimiter) Sync() {
+func (s *SlidingWindowLimiter) sync() {
+	// To implement
+}
 
+func (b *SlidingWindowLimiter) isExpired() bool {
+	// To implement
+	return false
+}
+
+func (s *SlidingWindowLimiter) publishUpdate() {
+	// To implement
+}
+
+func (s *SlidingWindowLimiter) subscribeUpdates() {
+	// To implement
+}
+
+func (s *SlidingWindowLimiter) clear() {
+	// To implement
 }

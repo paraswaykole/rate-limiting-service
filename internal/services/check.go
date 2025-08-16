@@ -11,7 +11,7 @@ type CheckDTO struct {
 }
 
 func Check(checkDTO *CheckDTO) (bool, error) {
-	rateLimiter := limiter.GetManager().GetLimiter(checkDTO.Key, checkDTO.Args)
+	rateLimiter := limiter.GetManager().AccessLimiter(checkDTO.Key, checkDTO.Args)
 	if rateLimiter == nil {
 		return false, errors.New("rate limiter not found")
 	}

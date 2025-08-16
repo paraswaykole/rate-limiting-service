@@ -28,7 +28,7 @@ func InitRedisStorage() *RedisStorage {
 }
 
 // Set sets a key with a given value and TTL (time to live).
-func (r *RedisStorage) Set(ctx context.Context, key string, value interface{}, ttl time.Duration) error {
+func (r *RedisStorage) Set(ctx context.Context, key string, value any, ttl time.Duration) error {
 	return r.client.Set(ctx, key, value, ttl).Err()
 }
 

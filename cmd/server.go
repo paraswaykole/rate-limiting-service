@@ -36,6 +36,20 @@ func startServer() {
 	app := fiber.New(fiber.Config{
 		StructValidator: &structValidator{validate: validator.New()},
 	})
+
+	app.Use(func(c fiber.Ctx) error {
+		fmt.Println(c.Path(), c.Method())
+		if c.Path() == "/check" && c.Method() == "GET" {
+			t1 := time.Now()
+			nextErr := c.Next()
+			allowed := c.Response().StatusCode() != http.StatusTooManyRequests
+			latency := time.Since(t1)
+			go services.UpdateMetrics(allowed, latency)
+			return nextErr
+		}
+		return c.Next()
+	})
+
 	app.Get("/check", func(c fiber.Ctx) error {
 		checkDto := new(services.CheckDTO)
 		if err := c.Bind().Query(checkDto); err != nil {
@@ -85,7 +99,13 @@ func startServer() {
 		return c.SendString("configured")
 	})
 	app.Get("/metrics", func(c fiber.Ctx) error {
-		return nil
+		reset := c.Query("reset", "")
+		if reset == "true" {
+			services.ResetMetrics()
+			return c.SendStatus(http.StatusNoContent)
+		}
+		response := services.GetMetrics()
+		return c.JSON(response)
 	})
 
 	// Graceful shutdown

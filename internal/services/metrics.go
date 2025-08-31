@@ -1,7 +1,6 @@
 package services
 
 import (
-	"fmt"
 	"sync"
 	"time"
 )
@@ -45,5 +44,4 @@ func UpdateMetrics(allowed bool, latency time.Duration) {
 	}
 	total := float64(metricsData.Data.TotalRequests)
 	metricsData.Data.AvgLatencyMs = ((metricsData.Data.AvgLatencyMs * (total - 1)) + float64(latency.Milliseconds())) / total
-	fmt.Println("updated", metricsData.Data)
 }

@@ -41,3 +41,29 @@ func TestTokenBucketLimiter(t *testing.T) {
 		t.Errorf("Expected 2 requests allowed after refill, got %d", allowedCount)
 	}
 }
+
+func TestSlidingWindowLimiter(t *testing.T) {
+	sw := &limiter.SlidingWindowLimiter{
+		WindowSize:  2 * time.Second, // 2-second sliding window
+		Capacity:    3,               // allow max 3 requests per window
+		RequestLogs: []int64{},
+	}
+
+	// 1. Should allow first 3 requests immediately
+	for i := range 3 {
+		if allowed, _ := sw.Check(); !allowed {
+			t.Errorf("Expected request %d to be allowed, but it was denied", i+1)
+		}
+	}
+
+	// 2. Fourth request should be denied
+	if allowed, _ := sw.Check(); allowed {
+		t.Errorf("Expected request to be denied when limit is reached")
+	}
+
+	// 3. Wait for 2.1 seconds (window expires) and check again
+	time.Sleep(2100 * time.Millisecond)
+	if allowed, _ := sw.Check(); !allowed {
+		t.Errorf("Expected request to be allowed after window expired")
+	}
+}

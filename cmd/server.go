@@ -38,7 +38,6 @@ func startServer() {
 	})
 
 	app.Use(func(c fiber.Ctx) error {
-		fmt.Println(c.Path(), c.Method())
 		if c.Path() == "/check" && c.Method() == "GET" {
 			t1 := time.Now()
 			nextErr := c.Next()

@@ -87,7 +87,7 @@ func MapToStruct(m map[string]string, out any) error {
 
 				// Handle slices/arrays of structs from JSON
 				if (v.Field(i).Kind() == reflect.Slice || v.Field(i).Kind() == reflect.Array) &&
-					v.Field(i).Type().Elem().Kind() == reflect.Int {
+					v.Field(i).Type().Elem().Kind() == reflect.Int64 {
 					slicePtr := reflect.New(v.Field(i).Type()).Interface()
 					if err := json.Unmarshal([]byte(val), slicePtr); err == nil {
 						v.Field(i).Set(reflect.ValueOf(slicePtr).Elem())

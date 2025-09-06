@@ -8,6 +8,7 @@ import (
 	"os/signal"
 	"rate-limiting-service/internal/config"
 	"rate-limiting-service/internal/limiter"
+	"rate-limiting-service/internal/logger"
 	"rate-limiting-service/internal/services"
 	"rate-limiting-service/internal/storage"
 	"rate-limiting-service/internal/utils"
@@ -19,6 +20,7 @@ import (
 )
 
 func main() {
+	logger.InitLogger("logs.csv", 1000)
 	storage.GetManager()
 	startSyncJob()
 	startServer()
@@ -44,6 +46,7 @@ func startServer() {
 			allowed := c.Response().StatusCode() != http.StatusTooManyRequests
 			latency := time.Since(t1)
 			go services.UpdateMetrics(allowed, latency)
+			logger.LogRequestAsync(allowed, latency)
 			return nextErr
 		}
 		return c.Next()

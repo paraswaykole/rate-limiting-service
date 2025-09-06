@@ -1,7 +1,11 @@
 package main
 
 import (
+	"bytes"
+	"fmt"
 	"math/rand"
+	"net/http"
+	"rate-limiting-service/internal/config"
 	"rate-limiting-service/pkg/sdk"
 	"time"
 
@@ -18,6 +22,10 @@ var users = map[string]any{
 }
 
 func main() {
+
+	rateLimiterHost := config.GetConfig("RATE_LIMITER_HOST", "http://localhost:3123")
+	setupRateLimiter(rateLimiterHost)
+
 	app := fiber.New()
 
 	// mock userid header for simulating tests
@@ -31,7 +39,7 @@ func main() {
 	})
 
 	app.Use(sdk.Middleware(sdk.Config{
-		CheckURL: "http://localhost:3123/check",
+		CheckURL: rateLimiterHost + "/check",
 		Timeout:  200 * time.Millisecond, // 200ms
 		FailOpen: false,
 		Key:      "helloworldservice",
@@ -47,4 +55,34 @@ func main() {
 	})
 
 	_ = app.Listen(":8080")
+}
+
+func setupRateLimiter(rateLimiterHost string) {
+	url := rateLimiterHost + "/configure"
+	payload := []byte(`{
+        "key": "helloworldservice",
+        "limiterType": 20,
+        "configuration": {
+            "capacity": 2,
+            "windowSize": 5
+        }
+    }`)
+
+	req, err := http.NewRequest("POST", url, bytes.NewBuffer(payload))
+	if err != nil {
+		fmt.Println("Error creating request:", err)
+		return
+	}
+
+	req.Header.Set("Content-Type", "application/json")
+
+	client := &http.Client{}
+	resp, err := client.Do(req)
+	if err != nil {
+		fmt.Println("Error making request:", err)
+		return
+	}
+	defer resp.Body.Close()
+
+	fmt.Println("Response Status:", resp.Status)
 }

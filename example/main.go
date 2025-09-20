@@ -110,7 +110,7 @@ func setupRateLimiter(rateLimiterHost string) {
 
 	payload = []byte(`{
 		"key": "api2",
-	    "limiterType": 20,
+	    "limiterType": 10,
 	    "configuration": {
 	      "capacity": 10,
 	      "refillRate": 5

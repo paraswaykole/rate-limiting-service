@@ -5,6 +5,7 @@ import "rate-limiting-service/internal/utils"
 var (
 	PORT           = GetConfig("PORT", "3123")
 	REDIS_ADDRESS  = GetConfig("REDIS_ADDRESS", "localhost:6379")
+	REDIS_USERNAME = GetConfig("REDIS_USERNAME", "")
 	REDIS_PASSWORD = GetConfig("REDIS_PASSWORD", "")
 )
 

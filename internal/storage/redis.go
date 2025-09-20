@@ -17,6 +17,7 @@ type RedisStorage struct {
 func InitRedisStorage() *RedisStorage {
 	client := redis.NewClient(&redis.Options{
 		Addr:     config.REDIS_ADDRESS,
+		Username: config.REDIS_USERNAME,
 		Password: config.REDIS_PASSWORD,
 	})
 	if err := client.Ping(context.Background()).Err(); err != nil {

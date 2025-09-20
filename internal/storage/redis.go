@@ -2,6 +2,7 @@ package storage
 
 import (
 	"context"
+	"crypto/tls"
 	"time"
 
 	"rate-limiting-service/internal/config"
@@ -15,10 +16,18 @@ type RedisStorage struct {
 
 // NewRedisStorage initializes and returns a RedisStorage instance.
 func InitRedisStorage() *RedisStorage {
+
+	var tlsconfig *tls.Config = nil
+	if config.REDIS_TLS_ON == "yes" {
+		tlsconfig = &tls.Config{
+			MinVersion: tls.VersionTLS12,
+		}
+	}
 	client := redis.NewClient(&redis.Options{
-		Addr:     config.REDIS_ADDRESS,
-		Username: config.REDIS_USERNAME,
-		Password: config.REDIS_PASSWORD,
+		Addr:      config.REDIS_ADDRESS,
+		Username:  config.REDIS_USERNAME,
+		Password:  config.REDIS_PASSWORD,
+		TLSConfig: tlsconfig,
 	})
 	if err := client.Ping(context.Background()).Err(); err != nil {
 		panic("redis not connected: " + err.Error())

@@ -7,6 +7,7 @@ var (
 	REDIS_ADDRESS  = GetConfig("REDIS_ADDRESS", "localhost:6379")
 	REDIS_USERNAME = GetConfig("REDIS_USERNAME", "")
 	REDIS_PASSWORD = GetConfig("REDIS_PASSWORD", "")
+	REDIS_TLS_ON   = GetConfig("REDIS_TLS_ON", "")
 )
 
 var (

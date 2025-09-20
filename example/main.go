@@ -38,21 +38,43 @@ func main() {
 		return c.Next()
 	})
 
-	app.Use(sdk.Middleware(sdk.Config{
+	middleware1 := sdk.Middleware(sdk.Config{
 		CheckURL: rateLimiterHost + "/check",
 		Timeout:  200 * time.Millisecond, // 200ms
 		FailOpen: false,
-		Key:      "helloworldservice",
+		Key:      "api1",
 		ArgsExtractor: func(c fiber.Ctx) (args []string, err error) {
 			userid := c.Get("X-User-Id", "")
 			return []string{c.Path(), userid}, nil
 		},
-	}))
-
-	app.Get("/hello", func(c fiber.Ctx) error {
-		userid := c.Get("X-User-Id", "")
-		return c.SendString("hello " + users[userid].(string))
 	})
+
+	middleware2 := sdk.Middleware(sdk.Config{
+		CheckURL: rateLimiterHost + "/check",
+		Timeout:  200 * time.Millisecond, // 200ms
+		FailOpen: false,
+		Key:      "api2",
+		ArgsExtractor: func(c fiber.Ctx) (args []string, err error) {
+			userid := c.Get("X-User-Id", "")
+			return []string{c.Path(), userid}, nil
+		},
+	})
+
+	api1 := app.Group("/api1", middleware1)
+	{
+		api1.Get("/hello", func(c fiber.Ctx) error {
+			userid := c.Get("X-User-Id", "")
+			return c.SendString("hello " + users[userid].(string))
+		})
+	}
+
+	api2 := app.Group("/api2", middleware2)
+	{
+		api2.Get("/hello", func(c fiber.Ctx) error {
+			userid := c.Get("X-User-Id", "")
+			return c.SendString("hello " + users[userid].(string))
+		})
+	}
 
 	_ = app.Listen(":8080")
 }
@@ -60,7 +82,7 @@ func main() {
 func setupRateLimiter(rateLimiterHost string) {
 	url := rateLimiterHost + "/configure"
 	payload := []byte(`{
-        "key": "helloworldservice",
+        "key": "api1",
         "limiterType": 20,
         "configuration": {
             "capacity": 2,
@@ -78,6 +100,32 @@ func setupRateLimiter(rateLimiterHost string) {
 
 	client := &http.Client{}
 	resp, err := client.Do(req)
+	if err != nil {
+		fmt.Println("Error making request:", err)
+		return
+	}
+	defer resp.Body.Close()
+
+	fmt.Println("Response Status:", resp.Status)
+
+	payload = []byte(`{
+		"key": "api2",
+	    "limiterType": 20,
+	    "configuration": {
+	      "capacity": 10,
+	      "refillRate": 5
+	    }
+    }`)
+
+	req, err = http.NewRequest("POST", url, bytes.NewBuffer(payload))
+	if err != nil {
+		fmt.Println("Error creating request:", err)
+		return
+	}
+
+	req.Header.Set("Content-Type", "application/json")
+
+	resp, err = client.Do(req)
 	if err != nil {
 		fmt.Println("Error making request:", err)
 		return

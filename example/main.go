@@ -112,8 +112,8 @@ func setupRateLimiter(rateLimiterHost string) {
 		"key": "api2",
 	    "limiterType": 10,
 	    "configuration": {
-	      "capacity": 10,
-	      "refillRate": 5
+	      "capacity": 2,
+	      "refillRate": 1
 	    }
     }`)
 

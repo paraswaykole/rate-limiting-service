@@ -11,7 +11,7 @@ import (
 type logEntry struct {
 	timestamp string
 	allowed   bool
-	latencyMs int64
+	latencyMs float64
 }
 
 var (
@@ -30,6 +30,7 @@ func InitLogger(path string, bufferSize int) error {
 		}
 		writer = csv.NewWriter(logFile)
 
+		// Write header if file is new
 		if info, _ := logFile.Stat(); info.Size() == 0 {
 			writer.Write([]string{"timestamp", "allowed", "latency_ms"})
 			writer.Flush()
@@ -46,7 +47,7 @@ func processLogs() {
 		writer.Write([]string{
 			entry.timestamp,
 			formatBool(entry.allowed),
-			formatInt(entry.latencyMs),
+			formatFloat(entry.latencyMs),
 		})
 		writer.Flush()
 	}
@@ -56,7 +57,7 @@ func LogRequestAsync(allowed bool, latency time.Duration) {
 	logChan <- logEntry{
 		timestamp: time.Now().Format(time.RFC3339Nano),
 		allowed:   allowed,
-		latencyMs: latency.Milliseconds(),
+		latencyMs: float64(latency.Nanoseconds()) / 1e6, // convert ns → ms with decimal
 	}
 }
 
@@ -67,6 +68,6 @@ func formatBool(b bool) string {
 	return "0"
 }
 
-func formatInt(f int64) string {
-	return fmt.Sprintf("%d", f)
+func formatFloat(f float64) string {
+	return fmt.Sprintf("%.3f", f) // 3 decimal places (e.g., 12.345 ms)
 }

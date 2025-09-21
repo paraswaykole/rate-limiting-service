@@ -43,5 +43,5 @@ func UpdateMetrics(allowed bool, latency time.Duration) {
 		metricsData.Data.Blocked++
 	}
 	total := float64(metricsData.Data.TotalRequests)
-	metricsData.Data.AvgLatencyMs = ((metricsData.Data.AvgLatencyMs * (total - 1)) + float64(latency.Milliseconds())) / total
+	metricsData.Data.AvgLatencyMs = ((metricsData.Data.AvgLatencyMs * (total - 1)) + (float64(latency.Nanoseconds()) / 1e6)) / total
 }

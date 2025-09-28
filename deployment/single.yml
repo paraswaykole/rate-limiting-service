@@ -1,0 +1,24 @@
+services:
+  rate-limiter:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: rate-limiter
+    ports:
+      - "3123:3123"
+    environment:
+      - REDIS_ADDRESS=redis-host:6379
+    restart: always
+
+  example-app:
+    build:
+      context: ./
+      dockerfile: ./example/Dockerfile
+    container_name: example-app
+    ports:
+      - "8080:8080"
+    environment:
+      - RATE_LIMITER_HOST=http://rate-limiter:3123
+    depends_on:
+      - rate-limiter
+    restart: always

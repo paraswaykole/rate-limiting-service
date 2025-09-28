@@ -1,0 +1,62 @@
+# Deployment model - multiple application server with its own rate-limiting sidecar instance,
+services:
+  rate-limiter-1:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: rate-limiter-1
+    ports:
+      - "3123:3123"
+    environment:
+      - REDIS_ADDRESS=redis-host:6379
+    restart: always
+
+  example-app-1:
+    build:
+      context: ./
+      dockerfile: ./example/Dockerfile
+    container_name: example-app-1
+    ports:
+      - "8081:8080"
+    environment:
+      - RATE_LIMITER_HOST=http://rate-limiter-1:3123
+    depends_on:
+      - rate-limiter-1
+    restart: always
+
+  rate-limiter-2:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: rate-limiter-2
+    ports:
+      - "3124:3123"
+    environment:
+      - REDIS_ADDRESS=redis-host:6379
+    restart: always
+
+  example-app-2:
+    build:
+      context: ./
+      dockerfile: ./example/Dockerfile
+    container_name: example-app-2
+    ports:
+      - "8082:8080"
+    environment:
+      - RATE_LIMITER_HOST=http://rate-limiter-2:3123
+    depends_on:
+      - rate-limiter-2
+    restart: always
+
+  # haproxy for load balancing
+  haproxy:
+    image: haproxy:2.9-alpine
+    container_name: haproxy
+    ports:
+      - "8080:8080"
+    volumes:
+      - ./haproxy.cfg:/usr/local/etc/haproxy/haproxy.cfg:ro
+    depends_on:
+      - example-app-1
+      - example-app-2
+    restart: always
